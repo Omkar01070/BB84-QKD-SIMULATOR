@@ -85,7 +85,15 @@ Install dependencies using pip and ensure all required Python libraries are avai
 Run the backend server using Python. Once the server starts, open a web browser and access the application through the local host address.
 
 The interface allows configuration of various simulation parameters including noise models and message input.
+Run the project:
 
+1. Open terminal in project folder
+2. Install dependencies:
+   pip install -r requirements.txt
+3. Start server:
+   python app2.py
+4. Open browser:
+   http://127.0.0.1:8000
 
 ## Project Structure
 
