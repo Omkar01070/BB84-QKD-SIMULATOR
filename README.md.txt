@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
  Run
 
-python app.py
+python app2.py
 
  Features
 
