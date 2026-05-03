@@ -9,7 +9,7 @@ This project simulates the BB84 Quantum Key Distribution protocol with noise mod
 1. Clone the repository
 2. Install dependencies
 3. Run the application
-4. Open browser at http://127.0.0.1:8000
+4. Open browser at http://127.0.0.1:5500
 
  Installation
 
