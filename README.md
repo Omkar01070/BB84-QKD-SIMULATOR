@@ -93,7 +93,7 @@ Run the project:
 3. Start server:
    python app2.py
 4. Open browser:
-   http://127.0.0.5500
+   http://127.0.0.1:5500
 
 ## Project Structure
 
