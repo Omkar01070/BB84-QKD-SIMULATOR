@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+jinja2
+numpy
+qiskit
+qiskit-aer
+joblib

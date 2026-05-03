@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BB84 — Quantum Key Distribution Simulator</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style2.css">
+</head>
+
+<body>
+
+  <div class="container">
+
+    <header>
+      <h1>BB84 — Quantum Key Distribution Simulator</h1>
+      <p class="lead">Configure noise, run BB84, encode messages using quantum keys and analyse.</p>
+    </header>
+
+    <div class="grid">
+
+      <!-- FORM -->
+      <section class="card">
+        <form id="simForm" method="post" action="/" novalidate>
+
+          <label>Key Length (bits)</label>
+          <input type="number" name="initial_key_length" min="1"
+            value="{{ result._form_values['initial_key_length'] if result else defaults.initial_key_length }}">
+
+          <label style="margin-top:12px;">Segment Length (bits)</label>
+          <input type="number" name="segment_size" min="1"
+            value="{{ result._form_values['segment_size'] if result else defaults.segment_size }}">
+
+          <fieldset style="border:0;margin-top:18px;">
+            <legend class="section-title">Select Channel Noise Types</legend>
+
+            <!-- Amplitude Damping -->
+            <div class="checkbox-row">
+              <label>
+                <input type="checkbox" id="amp_flag" name="amp_flag"
+                  {% if result and result._form_values['amp_flag'] %}checked{% endif %}>
+                <strong>Amplitude Damping</strong>
+              </label>
+
+              <div id="amp_desc" class="desc-long" style="display:none;">
+                A single-qubit generalized amplitude damping channel where λ is the probability
+                that the excited state (|1⟩) decays to (|0⟩). This models photon loss
+                in optical channels by reducing the population of the |1⟩ state.
+              </div>
+            </div>
+
+            <!-- Polarisation -->
+            <div class="checkbox-row">
+              <label>
+                <input type="checkbox" id="pol_flag" name="pol_flag"
+                  {% if result and result._form_values['pol_flag'] %}checked{% endif %}>
+                <strong>Polarisation</strong>
+              </label>
+
+              <div id="pol_desc" class="desc-long" style="display:none;">
+                A mixed-unitary error channel where Pauli operators (X, Z, or both)
+                are applied according to probabilities pᵢ, simulating discrete polarization drift.
+                This approximates fiber-induced polarization changes by flipping bit, phase,
+                or both components of the qubit.
+              </div>
+            </div>
+
+            <!-- Phase Damping -->
+            <div class="checkbox-row">
+              <label>
+                <input type="checkbox" id="phase_flag" name="phase_flag"
+                  {% if result and result._form_values['phase_flag'] %}checked{% endif %}>
+                <strong>Phase Damping</strong>
+              </label>
+
+              <div id="phase_desc" class="desc-long" style="display:none;">
+                A single-qubit phase damping channel where γ determines the amount of dephasing
+                that destroys the qubit’s coherence. It removes interference between |0⟩ and |1⟩
+                without affecting probabilities, modeling phase noise in communication.
+              </div>
+            </div>
+
+            <!-- Depolarisation -->
+            <div class="checkbox-row">
+              <label>
+                <input type="checkbox" id="depol_flag" name="depol_flag"
+                  {% if result and result._form_values['depol_flag'] %}checked{% endif %}>
+                <strong>Depolarisation</strong>
+              </label>
+
+              <div id="depol_desc" class="desc-long" style="display:none;">
+                A single-qubit depolarizing channel parameterized by p, representing the probability
+                that the state is randomized by applying X, Y, or Z with equal likelihood.
+                This noise models uniform random disturbances on a transmitted qubit.
+              </div>
+            </div>
+
+          </fieldset>
+
+          <!-- Noise probabilities block -->
+          <div id="noise_probs_block" class="pauli-block" style="display:none;">
+
+            <div id="amp_prob_row" style="display:none;">
+              <label>Amplitude Damping Probability</label>
+              <input type="number" name="amp_prob" step="0.0001"
+                value="{{ result._form_values['amp_prob'] if result else '' }}">
+            </div>
+
+            <div id="phase_prob_row" style="display:none;">
+              <label>Phase Damping Probability</label>
+              <input type="number" name="phase_prob" step="0.0001"
+                value="{{ result._form_values['phase_prob'] if result else '' }}">
+            </div>
+
+            <div id="depol_prob_row" style="display:none;">
+              <label>Depolarisation Probability</label>
+              <input type="number" name="depol_prob" step="0.0001"
+                value="{{ result._form_values['depol_prob'] if result else '' }}">
+            </div>
+
+          </div>
+
+          <!-- Pauli probabilities -->
+          <div id="pauli_block" class="pauli-block" style="display:none;">
+
+            <label>Pauli X</label>
+            <input type="number" name="pauli_px" step="0.0001"
+              value="{{ result._form_values['pauli_p_x'] if result else '' }}">
+
+            <label>Pauli Z</label>
+            <input type="number" name="pauli_pz" step="0.0001"
+              value="{{ result._form_values['pauli_p_z'] if result else '' }}">
+
+            <label>Pauli I</label>
+            <input type="number" name="pauli_pi" step="0.0001"
+              value="{{ result._form_values['pauli_p_i'] if result else '' }}">
+
+          </div>
+
+          <hr class="divider">
+
+          <!--<h3 class="section-title">Eavesdropper Detection Parameters</h3>
+
+          <label>Baseline QBER θ₀ (%)</label>
+          <input type="number" name="theta_qber_0" step="0.1"
+            value="{{ result._form_values['theta_qber_0'] if result else defaults.theta_qber_0 }}">
+
+          <label style="margin-top:10px;">High Threshold θʰ (%)</label>
+          <input type="number" name="theta_qber_h" step="0.1"
+            value="{{ result._form_values['theta_qber_h'] if result else defaults.theta_qber_h }}">
+
+          <label style="margin-top:10px;">Low Threshold θˡ (%)</label>
+          <input type="number" name="theta_qber_l" step="0.1"
+            value="{{ result._form_values['theta_qber_l'] if result else defaults.theta_qber_l }}">
+
+          <div class="two-col">
+            <div>
+              <label>γʰ</label>
+              <input type="number" name="gamma_h" step="0.01"
+                value="{{ result._form_values['gamma_h'] if result else defaults.gamma_h }}">
+            </div>
+
+            <div>
+              <label>γˡ</label>
+              <input type="number" name="gamma_l" step="0.01"
+                value="{{ result._form_values['gamma_l'] if result else defaults.gamma_l }}">
+            </div>
+          </div> -->
+
+          <hr class="divider">
+
+          <label>Message to Encode</label>
+          <textarea name="send_paragraph">{{ result._form_values['send_paragraph'] if result else "" }}</textarea>
+
+          <button class="btn" style="margin-top:12px;">Run Simulation</button>
+        </form>
+      </section>
+
+      <!-- RESULTS -->
+      <aside>
+        <div class="card">
+
+          <h3>Simulation Results</h3>
+
+          {% if result %}
+          <table class="results-table">
+            <tbody>
+
+              <tr>
+                <td>Global QBER</td>
+                <td>{{ result.QBER_Global }}%</td>
+              </tr>
+
+              <!--<tr>
+                <td>Average Segment QBER</td>
+                <td>{{ result.Average_Segment_QBER }}</td>
+              </tr> -->
+
+              <tr>
+                <td>Matched Segments</td>
+                <td>{{ result.Matched_Segments }}</td>
+              </tr>
+<!-- 
+              <tr>
+                <td>Final Key Length</td>
+                <td>{{ result.Alice_Final_Key | length }}</td>
+              </tr> -->
+
+              <!--<tr>
+                <td>Eavesdropper Detection</td>
+                <td>
+                  {% if result.Eve_Detected %}
+                    <span style="color:red;font-weight:bold;">Eavesdropper Detected</span>
+                  {% else %}
+                    <span style="color:green;font-weight:bold;">No Eve Detected</span>
+                  {% endif %}
+                </td>
+              </tr> -->
+
+              <!-- <tr>
+                <td>Alice Final Key</td>
+                <td class="decoded-box">{{ result.Alice_Final_Key }}</td>
+              </tr>
+              <tr>
+                <td>Bob Key (Before CASCADE)</td>
+                <td class="decoded-box">{{ result.Bob_Key_Before_Cascade }}</td>
+              </tr> -->
+
+              <!---->
+              <tr>
+                <td>Eavesdropper Detection </td>
+                <td>
+                  {% if result.Eve_Detected_ML %}
+                    <span style="color:red;font-weight:bold;">
+                      Eve Detected 
+                    </span>
+                  {% else %}
+                    <span style="color:green;font-weight:bold;">
+                      No Eve
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+              <!---->
+              
+              <tr>
+                <td>CASCADE Corrections</td>
+                <td>{{ result.Total_Cascade_Fixes }}</td>
+              </tr>
+
+              <tr>
+                <td>CASCADE Rounds</td>
+                <td>{{ result.Cascade_Round_Log | length }}</td>
+              </tr>
+
+
+              <!-- <tr>
+                <td>Bob Key (After CASCADE)</td>
+                <td class="decoded-box">{{ result.Bob_Final_Key }}</td>
+              </tr>
+               -->
+              <tr>
+                <td>Encoded Message</td>
+                <td>{{ result.Encoded }}</td>
+              </tr>
+
+              <tr>
+                <td>Decoded (Bob — Before error correction and privacy amplification)</td>
+                <td>{{ result.Decoded_Before_Cascade }}</td>
+              </tr>
+
+              <tr>
+                <td>Decoded (Bob - After error correction and privacy amplification)</td>
+                <td>{{ result.Decoded_After_Cascade_PA }}</td>
+              </tr>
+
+              <!-- <tr>
+                <td>Final Key Length After PA</td>
+                <td>{{ result.Alice_PA_Key | length }}</td>
+              </tr>
+               -->
+              <tr>
+                <td>Final Key Length (After Privacy Amplification)</td>
+                <td>{{ result.Final_Key_Length_PA }}</td>
+              </tr>
+
+              <tr>
+                <td>Secret Key Rate (SKR)</td>
+                <td>{{ result.Secret_Key_Rate }}</td>
+              </tr>
+
+              <tr>
+                <td>Pauli Probabilities</td>
+                <td>
+                  X: {{ result.Pauli_Probabilities.X }}% &nbsp;
+                  Z: {{ result.Pauli_Probabilities.Z }}% &nbsp;
+                  I: {{ result.Pauli_Probabilities.I }}%
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+
+          <div class="chart-card">
+            <canvas id="qberChart"></canvas>
+            <div id="qberNoData" class="small-muted" style="display:none;">No QBER data</div>
+          </div>
+
+          {% else %}
+          <p class="small-muted">No simulation run yet.</p>
+          {% endif %}
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+<!-- JS -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const amp = document.getElementById("amp_flag");
+  const pol = document.getElementById("pol_flag");
+  const phase = document.getElementById("phase_flag");
+  const depol = document.getElementById("depol_flag");
+
+  const ampDesc = document.getElementById("amp_desc");
+  const polDesc = document.getElementById("pol_desc");
+  const phaseDesc = document.getElementById("phase_desc");
+  const depolDesc = document.getElementById("depol_desc");
+
+  const noiseBlock = document.getElementById("noise_probs_block");
+  const ampRow = document.getElementById("amp_prob_row");
+  const phaseRow = document.getElementById("phase_prob_row");
+  const depolRow = document.getElementById("depol_prob_row");
+
+  const pauliBlock = document.getElementById("pauli_block");
+
+  function updateUI() {
+
+    ampDesc.style.display = amp.checked ? "block" : "none";
+    polDesc.style.display = pol.checked ? "block" : "none";
+    phaseDesc.style.display = phase.checked ? "block" : "none";
+    depolDesc.style.display = depol.checked ? "block" : "none";
+
+    const showNoise = amp.checked || phase.checked || depol.checked;
+    noiseBlock.style.display = showNoise ? "block" : "none";
+
+    ampRow.style.display = amp.checked ? "block" : "none";
+    phaseRow.style.display = phase.checked ? "block" : "none";
+    depolRow.style.display = depol.checked ? "block" : "none";
+
+    pauliBlock.style.display = pol.checked ? "block" : "none";
+  }
+
+  [amp, pol, phase, depol].forEach(el => el.addEventListener("change", updateUI));
+  updateUI();
+
+});
+</script>
+
+{% if result %}
+<script>
+try {
+    const qbers = JSON.parse(`{{ result.Segment_QBERs_json | safe }}`);
+    const canvas = document.getElementById("qberChart");
+
+    if (qbers.length === 0) {
+        document.getElementById("qberNoData").style.display = "block";
+        canvas.style.display = "none";
+    } else {
+        new Chart(canvas.getContext("2d"), {
+            type: "line",
+            data: {
+                labels: qbers.map((_, i) => "Segment " + (i + 1)),
+                datasets: [{
+                    label: "QBER per Segment (%)",
+                    data: qbers,
+                    borderColor: "rgb(59,130,246)",
+                    borderWidth: 2,
+                    tension: 0.25,
+                    pointRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+} catch (err) {
+    console.error("Chart error:", err);
+}
+</script>
+{% endif %}
+
+</body>
+</html>
